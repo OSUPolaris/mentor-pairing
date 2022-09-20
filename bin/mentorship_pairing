@@ -1,0 +1,113 @@
+#!/usr/bin/env python
+
+'''
+mentorship_pairing
+
+Script to execute pairing algorithm for Polaris mentor pairs.
+Requires --infile argument pointing to qualtrics survey csv
+of mentor/mentee preferences for pairing. Outputs final pairs
+to --outfile.
+'''
+
+from stablepairing.pairing import StablePairing
+from stablepairing.parser import survey_res_parser
+
+import pandas as pd
+import numpy as np
+import argparse
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('-i', '--infile', required=True, 
+    help='Input survey file to be parsed and have pairing ran on.')
+outdef = './mentorship_pairs.csv'
+parser.add_argument('-o', '--outfile', default=outdef,
+    help=f'Directory/file name of where and how to output the file. Default {outdef}')
+parser.add_argument('-w', '--write_parsed_survey', action='store_true', 
+    help='Flag to output the parsed survey as mentor_prefs.csv and mentee_prefs.csv')
+parser.add_argument('-p', '--print_pairs', action='store_true',
+    help='Flag to print out final pairs.')
+parser.add_argument('-a', '--should_assert',action='store_true',
+    help='Flag to throw assertion errors if pairing incomplete (due to a bug). Will print warnings otherwise.')
+
+uargs = parser.parse_args()
+file = uargs.infile
+write_parsed_survey = uargs.write_parsed_survey
+print_pairs = uargs.print_pairs
+outf = uargs.outfile
+should_assert = uargs.should_assert
+
+print(f'Using survey file {file}')
+mentor_df, mentee_df = survey_res_parser(file, return_df=True)
+# index and columns of the two dfs need to be in the same order for pairing
+# so we just sort alphabetically
+mentor_df.sort_index(axis='index', inplace=True)
+mentor_df.sort_index(axis='columns', inplace=True)
+mentee_df.sort_index(axis='index', inplace=True)
+mentee_df.sort_index(axis='columns', inplace=True)
+if write_parsed_survey:
+    mentor_df.to_csv('mentor_prefs.csv')
+    mentee_df.to_csv('mentee_prefs.csv')
+
+# Now pair them
+
+### Step 1: initial pairing, pass mentee first for mentee optimal pairing
+print('Running pairing for mentee-optimal matches.')
+sp = StablePairing(mentee_df, mentor_df)
+sp.run()
+# get mentee pairs, returns a pandas.Series object. Alternate args make it
+# a dict object, they are somewhat similar.
+mentee_series1 = sp.matches_as_series(orient='A')
+### Step 2: look for unpaired mentees, run again with only them
+unpaired = set(mentee_series1[mentee_series1=='None'].index)
+# If everyone is paired, we can just continue
+if len(unpaired) > 0:
+    unpaired_mentees = mentee_df.loc[unpaired]
+    unpaired_mentors = mentor_df[unpaired].copy()
+    sp2 = StablePairing(unpaired_mentees, unpaired_mentors)
+    sp2.run()
+    mentee_series2 = sp2.matches_as_series(orient='A')
+    # combine results
+    mentee_series = mentee_series1.combine_first(mentee_series2)
+    mentee_series.update(mentee_series2)
+else:
+    mentee_series = mentee_series1
+mentee_series.sort_index()
+
+### Step 3: Collect data, rankings of pairs for ouput
+mentee_rank_mentor = []
+mentor_rank_mentee = []
+num_mentors = len(mentee_df.columns)
+num_mentees = len(mentee_df.index)
+for mentee, mentor in mentee_series.items():
+    picked_rank = mentee_df.loc[mentee, mentor]
+    mentee_rank_mentor.append(picked_rank)
+    pr = mentor_df.loc[mentor, mentee] #mentor_df has inversed index/columns from mentee_df
+    mentor_rank_mentee.append(pr)
+u, c = np.unique(mentee_series.values, return_counts=True)
+u[c>1]
+pairdf = pd.DataFrame(mentee_series)
+pairdf.rename(columns={0:'mentor'}, inplace=True)
+pairdf['mentee_rank'] = mentee_rank_mentor
+pairdf['mentor_rank'] = mentor_rank_mentee
+pairdf['doubled_mentor'] = False
+pairdf.loc[pairdf['mentor'].isin(u[c>1]), 'doubled_mentor'] = True
+
+### Step 4: Let's do some checks
+mentor_set = set(mentor_df.index)
+mentee_set = set(mentee_df.index)
+if should_assert:
+    assert mentee_set == set(pairdf.index), f'Some mentees are missing from the final pairs! {mentee_set - set(pairdf.index)}'
+    # Check here, if there are less mentors than mentees I don't care if some mentors are missing
+    if num_mentees >= num_mentors:
+        assert mentor_set == set(pairdf.values), f'Some mentors are missing in the final pairs! {mentor_set - set(pairdf["mentor"])}'
+else:
+    if mentee_set == set(pairdf.index):
+        print(f'WARNING: Some mentees are missing from the final pairs! Missing: {mentee_set - set(pairdf.index)}')
+    if (mentor_set == set(pairdf.values)) and (num_mentees >= num_mentors):
+        print(f'WARNING: Some mentors are missing in the final pairs! Missing: {mentor_set - set(pairdf["mentor"])}')
+
+### Step 5: write results
+if print_pairs:
+    print(pairdf)
+pairdf.to_csv(outf)
+print(f'Done. Mentor/mentee pairings outputted to: {outf}')

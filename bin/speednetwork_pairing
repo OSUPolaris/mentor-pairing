@@ -1,0 +1,167 @@
+#!/usr/bin/env python
+
+'''
+speednetwork_pairing
+
+Script to execute pairing algorithm for Polaris speednetwork pairs.
+Generally done the week before mentor pairs so that mentees/mentors
+can meet and for opinions for the final pairing.
+Requires --infile argument pointing to qualtrics survey csv
+of mentee preferences for pairing. Outputs final pairs
+to --outfile.
+'''
+
+from stablepairing.pairing import StablePairing
+from stablepairing.parser import intro_survey_parser
+from stablepairing.util import make_up_preferences, fix_rows
+
+import pandas as pd
+import numpy as np
+import argparse
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('-i', '--infile', required=True, 
+    help='Input survey file to be parsed and have pairing ran on.')
+outdef = './speednetwork_pairs.csv'
+parser.add_argument('-o', '--outfile', default=outdef,
+    help=f'Directory/file name of where and how to output the file. Default {outdef}')
+parser.add_argument('-n', '--num_pairs', default=4,
+    help='Number of meets to schedule, default=4')
+parser.add_argument('-b', '--num_bonus', default=3,
+    help='Number of bonus meets to schedule, default=3, will be labled seperately from regular meets')
+parser.add_argument('-w', '--write_parsed_survey', action='store_true', 
+    help='Flag to output the parsed survey as mentor_prefs.csv and mentee_prefs.csv')
+parser.add_argument('-p', '--print_pairs', action='store_true',
+    help='Flag to print out final pairs.')
+parser.add_argument('-a', '--should_assert',action='store_true',
+    help='Flag to throw assertion errors if pairing incomplete (due to a bug). Will print warnings otherwise.')
+
+uargs = parser.parse_args()
+file = uargs.infile
+num_pairs = uargs.num_pairs
+num_bonus = uargs.num_bonus
+num_tot = num_pairs + num_bonus
+write_parsed_survey = uargs.write_parsed_survey
+print_pairs = uargs.print_pairs
+outf = uargs.outfile
+should_assert = uargs.should_assert
+
+# Step 1: read preferences, in this survey we only get mentee preferences
+print(f'Using survey file {file}')
+mentee_df = intro_survey_parser(file, return_df=True)
+
+# add code here to somehow add in people who didn't fill out the survey. (issue should be open)
+# could also put it in the parser
+
+mentee_df.sort_index(axis='index', inplace=True)
+mentee_df.sort_index(axis='columns', inplace=True)
+
+# The ordering here matters a lot for steps 2/3.
+# Making up mentor preferences THEN fixing mentee rankings means that
+# make_up_preferences.rank_cut is cutting on original rankings
+# IE rank_cut = 5 interprets 5 as a neutral ranking and we essentially
+# avoid matching people with anyone less than a positive ranking
+# (since we don't need many pairs anyway). 
+# One COULD (and maybe should?) flip the order, then basically use
+# rank_cut = number of pairs (+ small value like 1,2 or 3 maybe for flexibility)
+# Then you get mostly everyone's favorite matches (+some RNG) but might undervalue
+# people with strong preferences (ranking 10s, survey parser turns to 1)
+
+# Step 2, make up mentor prefs
+mentor_df = make_up_preferences(mentee_df)
+more_mentees = len(mentee_df) > len(mentor_df)
+
+### Step 3, remove duplicate rankings for mentees
+mdf_arr = mentee_df.values
+mdf_arr = fix_rows(mdf_arr)
+mentee_df.iloc[:,:] = mdf_arr
+
+### Step 3: Pair using stable pairing (mentees are A since it is A biased)
+mentee_pairings = []
+mentor_pairings1 = []
+mentor_pairings2 = []
+
+### Step 4: pair (with loop)
+mentee_pairings = []
+mentor_pairings1 = []
+mentor_pairings2 = []
+col_names = {}
+for i in range(num_tot):
+    sp = StablePairing(mentee_df, mentor_df)
+    sp.run()
+    mentee_series1 = sp.matches_as_series(orient='A')
+    mentor_series1 = sp.matches_as_series(orient='B')
+    mentor_pairings1.append(mentor_series1)
+
+    ### Step 4a: pop all paired mentees, pair again for doubles
+    if more_mentees:
+        unpaired = list(mentee_series1[mentee_series1 == 'None'].index)
+        print(unpaired)
+        unpaired_mentee = mentee_df.loc[unpaired]
+        new_mentor_ranks = mentor_df.drop(columns=set(mentor_df.columns) - set(unpaired))
+        mdf_arr = new_mentor_ranks.values
+        mdf_arr = fix_rows(mdf_arr)
+        new_mentor_ranks.iloc[:,:] = mdf_arr
+        sp = StablePairing(unpaired_mentee, new_mentor_ranks)
+        sp.run()
+        mentee_series2 = sp.matches_as_series(orient='A')
+        mentor_series2 = sp.matches_as_series(orient='B')
+        mentee_series1.update(mentee_series2)
+        #print(mentee_series2)
+        mentor_pairings2.append(mentor_series2)
+    else:
+        print(f'More mentors ({len(mentor_df)}) than mentees ({len(mentee_df)}), some mentors will be unpaired.')
+    mentee_pairings.append(mentee_series1) 
+
+    ### Step 4b: Down rank all pairs found to run again and get new meeting
+    # This makes the last pair the least liked paring, aside from the dummy,
+    # making duplicated pairing (across the set of pairings) unlikely.
+    # If you generate too many pairings (~number of people) you'll start looping
+    # and duplicate matches will happen.
+    picked_rank_per_row = []
+    num_mentors = len(mentee_df.columns)
+    num_mentees = len(mentee_df)
+    for mentee, mentor in mentee_series1.items():
+        picked_rank = mentee_df.loc[mentee, mentor]
+        picked_rank_per_row.append(picked_rank)
+        # Raise rank (subtract 1) of mentors with higher rank
+        mentee_df.loc[mentee, mentee_df.loc[mentee]>picked_rank] -= 1
+        # set this found pair to lowers rank
+        mentee_df.loc[mentee,mentor] = num_mentors
+        
+        # Now for mentor_df
+        picked_rank2 = mentor_df.loc[mentor, mentee]
+        mentor_df.loc[mentor, mentor_df.loc[mentor]>picked_rank] -= 1
+        mentor_df.loc[mentor, mentee] = num_mentees
+
+    ### Step 4c: name the column regular round (round) or bonus (bonus)
+    if i < num_pairs:
+        col_names[i] = f'Round {i+1}'
+    else:
+        col_names[i] = f'Bonus #{i+1-num_pairs}'   
+
+### Step 5: package it up!
+df_new = pd.DataFrame(mentee_pairings).T
+df_new.rename(columns=col_names,inplace=True)
+df_new2 = pd.DataFrame(mentor_pairings1).T
+df_new2.rename(columns=col_names,inplace=True)
+if more_mentees:
+    df_new3 = pd.DataFrame(mentor_pairings2).T
+    df_new3.rename(columns=col_names,inplace=True)
+
+### Step 6: Verify schedule does not have duplicate meets
+for i, row in df_new.iterrows():
+    if should_assert:
+        assert len(set(row)) != num_tot, f'Row {i} has a duplicate! {row}'
+    elif len(set(row)) != num_tot:
+        print(f'WARNING: Row {i} has a duplicate! {row}')
+
+### Step 7: write files
+df_new.to_csv(outf)
+if more_mentees:
+    df_new2.to_csv(outf.replace('.csv', '_mentor1.csv'))
+    df_new3.to_csv(outf.replace('.csv', '_mentor2.csv'))
+else:
+    df_new2.to_csv(outf.replace('.csv', '_mentor.csv'))
+
+### Step 8: profit?
