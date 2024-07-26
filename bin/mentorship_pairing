@@ -37,7 +37,7 @@ outf = uargs.outfile
 should_assert = uargs.should_assert
 
 print(f'Using survey file {file}')
-mentor_df, mentee_df = survey_res_parser(file, return_df=True)
+mentor_df, mentee_df = survey_res_parser(file)
 # index and columns of the two dfs need to be in the same order for pairing
 # so we just sort alphabetically
 mentor_df.sort_index(axis='index', inplace=True)
@@ -58,8 +58,9 @@ sp.run()
 # a dict object, they are somewhat similar.
 mentee_series1 = sp.matches_as_series(orient='A')
 ### Step 2: look for unpaired mentees, run again with only them
-unpaired = set(mentee_series1[mentee_series1=='None'].index)
+unpaired = mentee_series1[mentee_series1=='None'].index
 # If everyone is paired, we can just continue
+print(unpaired)
 if len(unpaired) > 0:
     unpaired_mentees = mentee_df.loc[unpaired]
     unpaired_mentors = mentor_df[unpaired].copy()
@@ -67,8 +68,14 @@ if len(unpaired) > 0:
     sp2.run()
     mentee_series2 = sp2.matches_as_series(orient='A')
     # combine results
+    print('\nS1')
+    print(mentee_series1)
+    print('\nS2')
+    print(mentee_series2)
     mentee_series = mentee_series1.combine_first(mentee_series2)
     mentee_series.update(mentee_series2)
+    print('\nSfinal')
+    print(mentee_series)
 else:
     mentee_series = mentee_series1
 mentee_series.sort_index()
@@ -78,7 +85,9 @@ mentee_rank_mentor = []
 mentor_rank_mentee = []
 num_mentors = len(mentee_df.columns)
 num_mentees = len(mentee_df.index)
+print(num_mentees, num_mentors)
 for mentee, mentor in mentee_series.items():
+    print(mentee, mentor)
     picked_rank = mentee_df.loc[mentee, mentor]
     mentee_rank_mentor.append(picked_rank)
     pr = mentor_df.loc[mentor, mentee] #mentor_df has inversed index/columns from mentee_df
@@ -101,9 +110,9 @@ if should_assert:
     if num_mentees >= num_mentors:
         assert mentor_set == set(pairdf.values), f'Some mentors are missing in the final pairs! {mentor_set - set(pairdf["mentor"])}'
 else:
-    if mentee_set == set(pairdf.index):
+    if mentee_set != set(pairdf.index):
         print(f'WARNING: Some mentees are missing from the final pairs! Missing: {mentee_set - set(pairdf.index)}')
-    if (mentor_set == set(pairdf.values)) and (num_mentees >= num_mentors):
+    if (mentor_set != set(pairdf.mentor)) and (num_mentees >= num_mentors):
         print(f'WARNING: Some mentors are missing in the final pairs! Missing: {mentor_set - set(pairdf["mentor"])}')
 
 ### Step 5: write results

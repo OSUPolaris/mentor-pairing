@@ -48,7 +48,7 @@ should_assert = uargs.should_assert
 
 # Step 1: read preferences, in this survey we only get mentee preferences
 print(f'Using survey file {file}')
-mentee_df = intro_survey_parser(file, return_df=True)
+mentee_df = intro_survey_parser(file)
 
 # add code here to somehow add in people who didn't fill out the survey. (issue should be open)
 # could also put it in the parser

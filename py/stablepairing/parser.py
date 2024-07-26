@@ -34,7 +34,7 @@ def survey_res_parser(survey_file, has_double_up_q=True):
     ### Step 1. Read and remove columns we don't ever need
     df = pd.read_csv(survey_file)
     # This below is gross hardcoding. I want some of this creep info explicitly removed, though another line will also remove these
-    columns_to_drop = ['StartDate','EndDate','Status','IPAddress','Progress','Duration (in seconds)','RecordedDate','ResponseId','RecipientLastName','RecipientFirstName','RecipientEmail','ExternalReference','LocationLatitude','LocationLongitude','DistributionChannel','UserLanguage']
+    columns_to_drop = ['StartDate','EndDate','Status','IPAddress','Progress','Duration (in seconds)','RecordedDate','ResponseId','RecipientLastName','RecipientFirstName','RecipientEmail','ExternalReference','LocationLatitude','LocationLongitude','DistributionChannel','UserLanguage','Q44']
     df.drop(columns=columns_to_drop, inplace=True)
     
     ### Step 2. Get columns of certain questions (some of these change simply because # of students changes)
@@ -59,7 +59,7 @@ def survey_res_parser(survey_file, has_double_up_q=True):
             which_key = key
         if has_double_up_q and ('Are you comfortable having two mentees?' in value): #Again watch for q wording change
             double_up_key = key
-        if value == 'Select your name': #Maybe change survey to make these not identical?
+        if 'select your name' in value.lower(): #Maybe change survey to make these not identical?
             name_select_keys.append(key)
     # Some asserts to fail gracefully if survey format changed
     assert len(name_select_keys)==2, 'Must be a column for mentor name select and another column for mentee name select'
@@ -79,15 +79,26 @@ def survey_res_parser(survey_file, has_double_up_q=True):
     else: # Note index flip between above and below, if not one way it is the other way
         mentor_name_key = name_select_keys[0]
         mentee_name_key = name_select_keys[1]
+    # Add duplicate mentor rows for those who are ok with two mentees
+    mentor_doubles = mentor_df[mentor_df[double_up_key].str.contains('Yes')].copy()
+    mentor_doubles_names = [name.replace('\t', ' ') for name in mentor_doubles[mentor_name_key]]
+    mentor_doubles[mentor_name_key] = [name + ' Double' for name in mentor_doubles_names]
+    mentor_df = pd.concat([mentor_df, mentor_doubles])
     mentor_drop = list(mentor_columns.keys())
     mentor_drop.extend(['Finished', which_key, double_up_key, mentee_name_key])
     mentor_df.drop(columns=mentor_drop, inplace=True)
     # remove NaN (no names, supposedly a survey can be "finished" with still no name)
     mentor_df = mentor_df[mentor_df[mentor_name_key].notna()].copy()
+    print(mentor_df)
     
     ### Step 4. Now split off mentee dataframe
     mentee_df = df[df[which_key]=='Mentee'].copy()
     mentee_df.rename(columns=mentor_columns, inplace=True)
+    # Add mentors who are ok with doubles to mentee dataframe
+    mentee_doubles = mentee_df[mentor_doubles_names].copy()
+    print([name + ' Double' for name in mentor_doubles_names])
+    mentee_doubles.columns = [name + ' Double' for name in mentor_doubles_names]
+    mentee_df = pd.concat([mentee_df, mentee_doubles], axis=1)
     mentee_drop = list(mentee_columns.keys())
     mentee_drop.extend(['Finished', which_key, double_up_key, mentor_name_key])
     mentee_df.drop(columns=mentee_drop, inplace=True)
