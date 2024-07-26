@@ -1,0 +1,9 @@
+# Nothing should be tracked in this folder...
+*
+
+# Except the example data
+!mcvitie_wilson_1970_table1_men.txt
+!mcvitie_wilson_1970_table1_women.txt
+
+# and the gitignore file itself!
+!.gitignore
