@@ -1,5 +1,6 @@
-# polaris-pbj
-Mentor and mentee pairing and meeting algorithms based on ranking surveys. Designed with Polaris (physics.osu.edu/polaris) mentorship program in mind and includes specific parsers for polaris surveys to obtain preferences.
+# mentor-pairing
+
+Mentor and mentee pairing and meeting algorithms based on ranking surveys. Designed with the [Polaris mentorship program](https://u.osu.edu/polaris/) in mind and includes specific parsers for polaris surveys to obtain preferences.
 
 Features a python module `stablepairing` which features:
  * `.parser` implmenting two parser for polaris like surveys
