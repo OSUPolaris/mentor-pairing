@@ -11,6 +11,11 @@ of mentee preferences for pairing. Outputs final pairs
 to --outfile.
 '''
 
+# Add stablepairing module to path
+import sys
+from pathlib import Path
+sys.path.append(str((Path(__file__).parents[1] / 'py').absolute()))
+
 from stablepairing.pairing import StablePairing
 from stablepairing.parser import intro_survey_parser
 from stablepairing.util import make_up_preferences, fix_rows
