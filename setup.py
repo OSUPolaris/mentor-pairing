@@ -18,5 +18,6 @@ setup(
     install_requirements=requirements,
     extras_require={
         "dev": requirements_dev
-    }
+    },
+    scripts=["bin/mentorship_pairing", "bin/speednetwork_pairing"]
 )
