@@ -9,17 +9,19 @@ of mentor/mentee preferences for pairing. Outputs final pairs
 to --outfile.
 '''
 
-# Add stablepairing module to path
-import sys
-from pathlib import Path
-sys.path.append(str((Path(__file__).parents[1] / 'py').absolute()))
-
-from stablepairing.pairing import StablePairing
-from stablepairing.parser import survey_res_parser
+import argparse
 
 import pandas as pd
 import numpy as np
-import argparse
+
+try:
+    from stablepairing import StablePairing
+    from stablepairing import survey_res_parser
+except ModuleNotFoundError as e:
+    print("Please install the ``stablepairing`` module by running ``pip \
+install -e .`` from the main repository directory.")
+    raise e
+    
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('-i', '--infile', required=True, 
