@@ -124,7 +124,7 @@ def add_missing_persons(df, names, fillval=None):
     missing = missing - not_missing
     if len(missing) > 0:
         appenddf = pd.concat([pd.Series(fillval, index=df.columns, name=mis) for mis in missing], axis='columns')
-        df = df.append(appenddf.T)
+        df = pd.concat([df, appenddf.T], axis=0)
     return df
 
 def is_same_name(name1, name2):
