@@ -1,20 +1,20 @@
 ### parser.py ###
 
-'''
+"""
 Contains parsers for qualtrics surveys ran by polaris that surve as input
 data for pairing. 
 
 If you are using this outside of polaris this may not be very useful unless
 you have a survey of a similar format. This could also serve as a reference
 for writing a parser for a different survey.
-'''
+"""
 
 import pandas as pd
 import numpy as np
 from .util import remove_duplicates, populate_nans, unify_name_lists, add_missing_persons
 
 def survey_res_parser(survey_file, has_double_up_q=True):
-    '''
+    """
     survey_res_parser
     
     Parses result of qualtrics ranking survey into lean, usable format.
@@ -29,7 +29,7 @@ def survey_res_parser(survey_file, has_double_up_q=True):
                     and mentor rankings of mentees as values
         mentee_df - pandas.DataFrame with mentee names as index, mentor names as columns
                     and mentee rankings of mentors as values
-    '''
+    """
     
     ### Step 1. Read and remove columns we don't ever need
     df = pd.read_csv(survey_file)
@@ -142,7 +142,7 @@ def survey_res_parser(survey_file, has_double_up_q=True):
 
 
 def intro_survey_parser(survey_file):
-    '''
+    """
     survey_res_parser
     
     Parses result of qualtrics ranking survey into lean, usable format.
@@ -151,7 +151,7 @@ def intro_survey_parser(survey_file):
                           
     Outputs:
         clean_df - pandas.DataFrame cleaned up
-    '''
+    """
     
     ### Step 1. Read and remove columns we don't ever need
     df = pd.read_csv(survey_file)

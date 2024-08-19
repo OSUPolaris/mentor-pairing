@@ -1,14 +1,14 @@
 ### util.py ###
 
-'''
+"""
 utility/misc functions for parser, pairing and main scripts
-'''
+"""
 
 import pandas as pd
 import numpy as np
 
 def make_up_preferences(df, seed=1234, rank_cut=5):
-    '''
+    """
     make_up_preferences
     
     Makes up preferences for pairings between set B and A, given set A's preferences.
@@ -30,7 +30,7 @@ def make_up_preferences(df, seed=1234, rank_cut=5):
     Output:
         df_new - pandas.DataFrame, preferences of set B, shape df.T
         
-    '''
+    """
     max_rank = np.max(df.max())
     mentors = list(df.columns)
     mentees = list(df.index)
@@ -53,7 +53,7 @@ def make_up_preferences(df, seed=1234, rank_cut=5):
     return df_new
 
 def remove_duplicates(df, check_column):
-    '''
+    """
     remove_duplicates
     
     Removes duplicate entries in a specific column. Chooses index with minimum
@@ -65,7 +65,7 @@ def remove_duplicates(df, check_column):
     Output
         df - pandas.Dataframe with duplicates removed
     
-    '''
+    """
     duplicates = df.duplicated(subset=check_column, keep=False)
     if not(duplicates.empty): #If no duplicates do nothing
         duplicate_names = set(df[duplicates][check_column])
@@ -81,7 +81,7 @@ def remove_duplicates(df, check_column):
     return df
 
 def populate_nans(df):
-    '''
+    """
     populate_nans
     
     Fills nans in _numerical_ dataframe with max_value+1
@@ -90,7 +90,7 @@ def populate_nans(df):
         df - pandas.Dataframe with NaNs
     Output
         df - pandas.Dataframes with NaNs filled with max_value+1
-    '''
+    """
     fill_vals = df.max(axis='columns', skipna=True) + 1
     filldf = pd.concat([fill_vals.rename(col) for col in df.columns], axis='columns')
     filldf.fillna(value=len(filldf.columns), inplace=True) # in case someone is a jerk and doesn't actually fill preferences... (yes this happened)
@@ -98,7 +98,7 @@ def populate_nans(df):
     return df
 
 def add_missing_persons(df, names, fillval=None):
-    '''
+    """
     add_missing_persons
     
     Takes a df with names as index, adds missing names to the bottom
@@ -111,7 +111,7 @@ def add_missing_persons(df, names, fillval=None):
     Outputs:
         df - pandas.Dataframe with all names in index
     
-    '''
+    """
     if fillval is None:
         fillval = len(df.columns) #idk, large number for low preference of people who skipped survey?
     missing = set(names) - set(df.index)
@@ -128,7 +128,7 @@ def add_missing_persons(df, names, fillval=None):
     return df
 
 def is_same_name(name1, name2):
-    '''
+    """
     is_same_name
     
     Compares if two names are the same.
@@ -141,7 +141,7 @@ def is_same_name(name1, name2):
         name2 - string
     Output:
         Bool, True if names match, False if not
-    '''
+    """
     allnames = disassemble_name(name1)
     firstmatch = allnames[0] in name2 #first name
     lastmatch = allnames[-1] in name2 #last (or last last) name
@@ -152,7 +152,7 @@ def is_same_name(name1, name2):
     return (firstmatch and (lastmatch or lastmatch2))
 
 def disassemble_name(name):
-    '''
+    """
     disassemble_name
     
     splits name string into various part of name (first middle last last-last)
@@ -163,7 +163,7 @@ def disassemble_name(name):
         name - string
     Output:
         allnames - list of strings with parts of name
-    '''
+    """
     name = name.replace('\t', ' ')
     splitname = name.split(' ')
     #allnames = []
@@ -172,7 +172,7 @@ def disassemble_name(name):
     return splitname
 
 def unify_name_lists(namelist1, namelist2):
-    '''
+    """
     unify_name_lists
     
     Takes 2 lists of names and try to make duplicated names match
@@ -191,7 +191,7 @@ def unify_name_lists(namelist1, namelist2):
     Outputs:
         renamelist1 - dict map with old namelist keys, unified names values
         renamelist2 - dict map with old namelist keys, unified names values
-    '''
+    """
     renamelist1 = {}
     renamelist2 = {}
     for i in range(len(namelist1)):
@@ -210,7 +210,7 @@ def unify_name_lists(namelist1, namelist2):
     return renamelist1, renamelist2
 
 def fix_row(arr, rng=None):
-    '''
+    """
     fix_row
 
     Takes a row (array) of rankings and makes it so they are rankings
@@ -231,7 +231,7 @@ def fix_row(arr, rng=None):
     Output:
         arr - 1D numpy array with unique rankings
 
-    '''
+    """
     if rng is None:
         rng = np.random.default_rng(seed=1234)
     arr_shift = 10*len(arr) #large shift so we don't create new dupes in the process
@@ -252,11 +252,11 @@ def fix_row(arr, rng=None):
     return arr
 
 def fix_rows(arr, rng=None):
-    '''
+    """
     fix_rows
     
     Fixes rows for a 2D array, see fix_row
-    '''
+    """
     if rng is None:
         rng = np.random.default_rng(seed=1234)
     for i in range(arr.shape[0]):
