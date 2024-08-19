@@ -5,7 +5,7 @@ requirements = [
     "numpy"
 ]
 
-requirements_dev = []
+requirements_dev = ["pytest"]
 
 setup(
     name="stablepairing",
