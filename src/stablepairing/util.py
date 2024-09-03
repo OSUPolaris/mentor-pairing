@@ -7,6 +7,14 @@ utility/misc functions for parser, pairing and main scripts
 import pandas as pd
 import numpy as np
 
+def last_name_first(full_name):
+    """
+    Reverse a full name string from first name first to last name first.
+    """
+    last_name = ' '.join(full_name.split(' ')[1:])
+    first_name = full_name.split(' ')[0]
+    return ', '.join([last_name, first_name])
+
 def make_up_preferences(df, seed=1234, rank_cut=5):
     """
     make_up_preferences

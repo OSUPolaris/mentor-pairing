@@ -29,9 +29,9 @@ parser.add_argument('-i', '--infile', required=True,
 outdef = './speednetwork_pairs.csv'
 parser.add_argument('-o', '--outfile', default=outdef,
     help=f'Directory/file name of where and how to output the file. Default {outdef}')
-parser.add_argument('-n', '--num_pairs', default=4,
+parser.add_argument('-n', '--num_pairs', default=4, type=int,
     help='Number of meets to schedule, default=4')
-parser.add_argument('-b', '--num_bonus', default=3,
+parser.add_argument('-b', '--num_bonus', default=3, type=int,
     help='Number of bonus meets to schedule, default=3, will be labled seperately from regular meets')
 parser.add_argument('-w', '--write_parsed_survey', action='store_true', 
     help='Flag to output the parsed survey as mentor_prefs.csv and mentee_prefs.csv')

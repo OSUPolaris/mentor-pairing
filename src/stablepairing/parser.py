@@ -11,7 +11,7 @@ for writing a parser for a different survey.
 
 import pandas as pd
 import numpy as np
-from .util import remove_duplicates, populate_nans, unify_name_lists, add_missing_persons
+from .util import remove_duplicates, populate_nans, unify_name_lists, add_missing_persons, last_name_first
 
 def survey_res_parser(survey_file, has_double_up_q=True):
     """
@@ -157,7 +157,7 @@ def intro_survey_parser(survey_file):
     df = pd.read_csv(survey_file)
     # This below is gross hardcoding. I want some of this creep info explicitly removed, though another line will also remove these
     columns_to_drop = ['StartDate','EndDate','Status','IPAddress','Progress','Duration (in seconds)','RecordedDate','ResponseId','RecipientLastName','RecipientFirstName','RecipientEmail','ExternalReference','LocationLatitude','LocationLongitude','DistributionChannel','UserLanguage']
-    df.drop(columns=columns_to_drop, inplace=True)
+    df.drop(columns=columns_to_drop, inplace=True, errors='ignore')
     
     ### Step 2. Get columns of certain questions (some of these change simply because # of students changes)
     # This extracts a pd.series (effectively a dict), 0th row is the question text
@@ -172,6 +172,8 @@ def intro_survey_parser(survey_file):
     for key, value in q_row.items():
         if 'Which mentors do you want to meet with?' in value:
             name = value.split('- ')[-1].replace('\t',' ')
+            # Last name first
+            name = last_name_first(name)
             # dash space is very helpful for splitting name from other text DO NOT change this in the survey!!!
             mentor_columns[key] = name
         if '- First' in value:
@@ -183,11 +185,11 @@ def intro_survey_parser(survey_file):
     assert last_name_col is not None, 'Did not find last name column!'
     
     ### Step 3. Split off mentor dataframe
-    df = df[df['Finished']=='True'] #pop all not finished
+    df = df[df['Finished'].str.upper()=='TRUE'] #pop all not finished
     # Split off mentor dataframe
     ret_df = df.copy()
     ret_df.rename(columns=mentor_columns, inplace=True)
-    ret_df['name'] = ret_df[first_name_col] + ' ' + ret_df[last_name_col]
+    ret_df['name'] = ret_df[last_name_col] + ', ' + ret_df[first_name_col]
     keep_cols = ['name']
     keep_cols.extend(list(mentor_columns.values()))
     drop_cols = set(ret_df.columns) - set(keep_cols)
