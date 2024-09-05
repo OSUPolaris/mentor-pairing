@@ -101,7 +101,7 @@ class StablePairing():
         self.Bc = np.zeros((self.Bchoice.shape[0], self.Bchoice.shape[1]+1)) + 1000 #just large number to help spot bugs, should be overwritten
         self.Bc[:,0] = self.Bc.shape[1] + 1 #make sure dummy is low ranked and rejected
         self.Bc[:,1:] = self.Bchoice
-        self. count = 0
+        self.count = 0
         self.Acounter = np.zeros(self.num_A+1, dtype=int)
         self.match = np.zeros(self.num_B, dtype=int)
         for i in range(self.num_A+1): # +1 cause dummy in 0
