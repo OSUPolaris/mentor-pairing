@@ -68,7 +68,7 @@ def survey_res_parser(survey_file, has_double_up_q=True):
         assert double_up_key is not None, 'Must ask mentors if they are ok with being doubled up'
     
     ### Step 3. Split off mentor dataframe
-    df = df[df['Finished']=='True'].copy() #pop all not finished
+    df = df[df['Finished'].str.upper() == 'TRUE'].copy() #pop all not finished
     # Split off mentor dataframe
     mentor_df = df[df[which_key] == 'Mentor'].copy()
     mentor_df.rename(columns=mentee_columns, inplace=True)
