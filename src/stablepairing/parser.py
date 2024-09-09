@@ -33,6 +33,8 @@ def survey_res_parser(survey_file, has_double_up_q=True):
     
     ### Step 1. Read and remove columns we don't ever need
     df = pd.read_csv(survey_file)
+    # Remove survey preview entries
+    df = df[df['DistributionChannel'].str.lower() != 'preview'].copy()
     # This below is gross hardcoding. I want some of this creep info explicitly removed, though another line will also remove these
     columns_to_drop = ['StartDate','EndDate','Status','IPAddress','Progress','Duration (in seconds)','RecordedDate','ResponseId','RecipientLastName','RecipientFirstName','RecipientEmail','ExternalReference','LocationLatitude','LocationLongitude','DistributionChannel','UserLanguage','Q44']
     df.drop(columns=columns_to_drop, inplace=True)
