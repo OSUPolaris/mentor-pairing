@@ -156,8 +156,8 @@ def is_same_name(name1, name2):
     if len(allnames) > 2:
         lastmatch2 = allnames[-2] in name2 #middle (or first last) name
     else:
-        lastmatch2 = False
-    return (firstmatch and (lastmatch or lastmatch2))
+        lastmatch2 = True
+    return (firstmatch and (lastmatch and lastmatch2))
 
 def disassemble_name(name):
     """

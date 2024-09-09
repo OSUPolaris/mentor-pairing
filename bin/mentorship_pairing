@@ -98,6 +98,8 @@ for mentee, mentor in mentee_series.items():
     picked_rank = mentee_df.loc[mentee, mentor]
     mentee_rank_mentor.append(picked_rank)
     pr = mentor_df.loc[mentor, mentee] #mentor_df has inversed index/columns from mentee_df
+    if len(pr.shape) > 0: # deal with doubled mentors
+        pr = pr.iloc[0]
     mentor_rank_mentee.append(pr)
 u, c = np.unique(mentee_series.values, return_counts=True)
 u[c>1]
