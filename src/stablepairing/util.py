@@ -150,14 +150,19 @@ def is_same_name(name1, name2):
     Output:
         Bool, True if names match, False if not
     """
-    allnames = disassemble_name(name1)
-    firstmatch = allnames[0] in name2 #first name
-    lastmatch = allnames[-1] in name2 #last (or last last) name
-    if len(allnames) > 2:
-        lastmatch2 = allnames[-2] in name2 #middle (or first last) name
-    else:
-        lastmatch2 = True
-    return (firstmatch and (lastmatch and lastmatch2))
+    # allnames = disassemble_name(name1)
+    # firstmatch = allnames[0] in name2 #first name
+    # lastmatch = allnames[-1] in name2 #last (or last last) name
+    # if len(allnames) > 2:
+    #     lastmatch2 = allnames[-2] in name2 #middle (or first last) name
+    # else:
+    #     lastmatch2 = True
+    # return (firstmatch and (lastmatch and lastmatch2))
+    allnames1 = disassemble_name(name1)
+    name1_in_name2 = all([n in name2 for n in name1])
+    allnames2 = disassemble_name(name2)
+    name2_in_name1 = all([n in name1 for n in name2])
+    return (name1_in_name2 and name2_in_name1)
 
 def disassemble_name(name):
     """

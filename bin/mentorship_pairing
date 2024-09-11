@@ -54,16 +54,26 @@ mentee_df.sort_index(axis='columns', inplace=True)
 if write_parsed_survey:
     mentor_df.to_csv('mentor_prefs.csv')
     mentee_df.to_csv('mentee_prefs.csv')
+# split off mentors who are ok with two mentees
+# this ensures that every mentor is paired with at least one mentee
+# mentor_double_list = [c for c in mentor_df.index if 'Double' in c]
+# mentee_doubles = mentee_df[mentor_double_list].copy()
+# mentee_unique = mentee_df.drop(mentor_double_list, axis='columns')
+# mentor_doubles = mentor_df.loc[mentor_double_list].copy()
+# mentor_unique = mentor_df.drop(mentor_double_list, axis='index')
+
 
 # Now pair them
 
 ### Step 1: initial pairing, pass mentee first for mentee optimal pairing
 print('Running pairing for mentee-optimal matches.')
 sp = StablePairing(mentee_df, mentor_df)
+# sp = StablePairing(mentee_unique, mentor_unique)
 sp.run()
 # get mentee pairs, returns a pandas.Series object. Alternate args make it
 # a dict object, they are somewhat similar.
 mentee_series1 = sp.matches_as_series(orient='A')
+
 ### Step 2: look for unpaired mentees, run again with only them
 unpaired = mentee_series1[mentee_series1=='None'].index
 # If everyone is paired, we can just continue
@@ -71,6 +81,10 @@ print(unpaired)
 if len(unpaired) > 0:
     unpaired_mentees = mentee_df.loc[unpaired]
     unpaired_mentors = mentor_df[unpaired].copy()
+    # unpaired_mentees = mentee_doubles.loc[unpaired]
+    # unpaired_mentors = mentor_doubles[unpaired].copy()
+    # print(unpaired_mentees)
+    # print(unpaired_mentors)
     sp2 = StablePairing(unpaired_mentees, unpaired_mentors)
     sp2.run()
     mentee_series2 = sp2.matches_as_series(orient='A')
@@ -93,6 +107,9 @@ mentor_rank_mentee = []
 num_mentors = len(mentee_df.columns)
 num_mentees = len(mentee_df.index)
 print(num_mentees, num_mentors)
+# Re-join mentor doubles
+# mentee_df = mentee_df.join(mentee_doubles)
+# mentor_df = pd.concat([mentor_df, mentor_doubles])
 for mentee, mentor in mentee_series.items():
     print(mentee, mentor)
     picked_rank = mentee_df.loc[mentee, mentor]
