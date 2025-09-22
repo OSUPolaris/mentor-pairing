@@ -53,6 +53,7 @@ should_assert = uargs.should_assert
 # Step 1: read preferences, in this survey we only get mentee preferences
 print(f'Using survey file {file}')
 mentee_df = intro_survey_parser(file)
+mentee_df_copy = mentee_df.copy() # copy for comparison later
 
 # add code here to somehow add in people who didn't fill out the survey. (issue should be open)
 # could also put it in the parser
@@ -80,12 +81,7 @@ mdf_arr = mentee_df.values
 mdf_arr = fix_rows(mdf_arr)
 mentee_df.iloc[:,:] = mdf_arr
 
-### Step 3: Pair using stable pairing (mentees are A since it is A biased)
-mentee_pairings = []
-mentor_pairings1 = []
-mentor_pairings2 = []
-
-### Step 4: pair (with loop)
+### Step 4: Pair using stable pairing (mentees are A since it is A biased)
 mentee_pairings = []
 mentor_pairings1 = []
 mentor_pairings2 = []
@@ -100,7 +96,7 @@ for i in range(num_tot):
     ### Step 4a: pop all paired mentees, pair again for doubles
     if more_mentees:
         unpaired = list(mentee_series1[mentee_series1 == 'None'].index)
-        print(unpaired)
+        # print(unpaired)
         unpaired_mentee = mentee_df.loc[unpaired]
         new_mentor_ranks = mentor_df.drop(columns=set(mentor_df.columns) - set(unpaired))
         mdf_arr = new_mentor_ranks.values
@@ -159,6 +155,13 @@ for i, row in df_new.iterrows():
         assert len(set(row)) != num_tot, f'Row {i} has a duplicate! {row}'
     elif len(set(row)) != num_tot:
         print(f'WARNING: Row {i} has a duplicate! {row}')
+    # Look for mentees paired with low-scoring mentors
+    scores = mentee_df_copy[row.values[:num_pairs]].loc[row.name]
+    bonus_scores = mentee_df_copy[row.values[num_pairs:]].loc[row.name]
+    if any([v > 6 for v in scores.values]):
+        print(f'WARNING: {i} has low-scoring pair(s):\n{scores}')
+    if any([v > 6 for v in bonus_scores.values]):
+        print(f'WARNING: {i} has low-scoring bonus pair(s):\n{bonus_scores}')
 
 ### Step 7: write files
 df_new.to_csv(outf)
