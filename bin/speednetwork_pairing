@@ -26,7 +26,7 @@ install -e .`` from the main repository directory.")
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('-i', '--infile', required=True, 
     help='Input survey file to be parsed and have pairing ran on.')
-outdef = './speednetwork_pairs.csv'
+outdef = './out/speednetwork_pairs.csv'
 parser.add_argument('-o', '--outfile', default=outdef,
     help=f'Directory/file name of where and how to output the file. Default {outdef}')
 parser.add_argument('-n', '--num_pairs', default=4, type=int,
