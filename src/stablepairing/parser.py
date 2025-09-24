@@ -30,13 +30,17 @@ def survey_res_parser(survey_file, has_double_up_q=True):
         mentee_df - pandas.DataFrame with mentee names as index, mentor names as columns
                     and mentee rankings of mentors as values
     """
+    ### Step 0. Import complete list of mentors and mentees
+    # Necessary because the survey format changed
+    mentor_list = read_name_list('./data/mentors.txt')
+    mentee_list = read_name_list('./data/mentees.txt')
     
     ### Step 1. Read and remove columns we don't ever need
     df = pd.read_csv(survey_file)
     # Remove survey preview entries
     df = df[df['DistributionChannel'].str.lower() != 'preview'].copy()
     # This below is gross hardcoding. I want some of this creep info explicitly removed, though another line will also remove these
-    columns_to_drop = ['StartDate','EndDate','Status','IPAddress','Progress','Duration (in seconds)','RecordedDate','ResponseId','RecipientLastName','RecipientFirstName','RecipientEmail','ExternalReference','LocationLatitude','LocationLongitude','DistributionChannel','UserLanguage','Q44']
+    columns_to_drop = ['StartDate','EndDate','Status','IPAddress','Progress','Duration (in seconds)','RecordedDate','ResponseId','RecipientLastName','RecipientFirstName','RecipientEmail','ExternalReference','LocationLatitude','LocationLongitude','DistributionChannel','UserLanguage']
     df.drop(columns=columns_to_drop, inplace=True)
     
     ### Step 2. Get columns of certain questions (some of these change simply because # of students changes)
@@ -52,11 +56,11 @@ def survey_res_parser(survey_file, has_double_up_q=True):
     # Iterate through questions to extract a few column names for later cleaning
     # A lot of this parsing is gross hardcoding that needs to change if the survey wording changes
     for key, value in q_row.items():
-        if 'mentee (' in value:
-            # dash space is very helpful for splitting name from other text DO NOT change this in the survey!!!
-            mentee_columns[key] = value.split('- ')[-1].replace('\t', ' ').replace('  ', ' ') #tabs for some reason often appear?
-        elif 'mentor (' in value:
-            mentor_columns[key] = value.split('- ')[-1].replace('\t', ' ').replace('  ', ' ')
+        if 'choice of mentee' in value:
+            # Extract numerical position from, e.g., "1st choice of mentee" or "13th choice of mentor"
+            mentee_columns[key] = value.split(' ')[0][:-2]
+        elif 'choice of mentor' in value:
+            mentor_columns[key] = value.split(' ')[0][:-2]
         if 'Are you a mentee or a mentor?' in value: #note this needs to be changed if question is reworded
             which_key = key
         if has_double_up_q and ('Are you comfortable having two mentees?' in value): #Again watch for q wording change
@@ -69,9 +73,8 @@ def survey_res_parser(survey_file, has_double_up_q=True):
     if has_double_up_q:
         assert double_up_key is not None, 'Must ask mentors if they are ok with being doubled up'
     
-    ### Step 3. Split off mentor dataframe
+    ### Step 3a. Split off mentor dataframe
     df = df[df['Finished'].str.upper() == 'TRUE'].copy() #pop all not finished
-    # Split off mentor dataframe
     mentor_df = df[df[which_key] == 'Mentor'].copy()
     mentor_df.rename(columns=mentee_columns, inplace=True)
     # Sort out which name select is for which group, only need to check once (and not duplicate check for mentees)
@@ -90,21 +93,57 @@ def survey_res_parser(survey_file, has_double_up_q=True):
     mentor_drop.extend(['Finished', which_key, double_up_key, mentee_name_key])
     mentor_df.drop(columns=mentor_drop, inplace=True)
     # remove NaN (no names, supposedly a survey can be "finished" with still no name)
-    mentor_df = mentor_df[mentor_df[mentor_name_key].notna()].copy()
-    print(mentor_df)
+    mentor_df = mentor_df[mentor_df[mentor_name_key].notna()].copy().reset_index(drop=True)
+
+    ### Step 3b. Invert names and rankings (names should be columns and entries should be rankings)
+    # mentee_list = list(set(mentor_df[mentee_columns.values()].values.flatten().tolist()))
+    # Create new columns with mentee names as headers
+    mentor_name_prefs = pd.DataFrame(
+        np.nan * np.ones((mentor_df.shape[0], len(mentee_list))),
+        columns=mentee_list, index=mentor_df.index
+    )
+    for i, row in mentor_df.iterrows():
+        ordered_mentees = row.loc[mentee_columns.values()].copy()
+        # If there are duplicates, keep the first and shift the rest up by 1
+        ordered_mentees.drop_duplicates(keep='first', inplace=True)
+        ordered_mentees.index = np.arange(1, ordered_mentees.shape[0]+1)
+        # Assign rank to mentee name in flipped dataframe
+        for rank, mentee_name in ordered_mentees.items():
+            mentor_name_prefs.loc[i, mentee_name] = rank
+    mentor_df = mentor_df.join(mentor_name_prefs).drop(columns=mentee_columns.values())
     
-    ### Step 4. Now split off mentee dataframe
+    ### Step 4a. Now split off mentee dataframe
     mentee_df = df[df[which_key]=='Mentee'].copy()
     mentee_df.rename(columns=mentor_columns, inplace=True)
     # Add mentors who are ok with doubles to mentee dataframe
-    mentee_doubles = mentee_df[mentor_doubles_names].copy()
-    print([name + ' Double' for name in mentor_doubles_names])
-    mentee_doubles.columns = [name + ' Double' for name in mentor_doubles_names]
-    mentee_df = pd.concat([mentee_df, mentee_doubles], axis=1)
+    # mentee_doubles = mentee_df[mentor_doubles_names].copy()
+    # print([name + ' Double' for name in mentor_doubles_names])
+    # mentee_doubles.columns = [name + ' Double' for name in mentor_doubles_names]
+    # mentee_df = pd.concat([mentee_df, mentee_doubles], axis=1)
     mentee_drop = list(mentee_columns.keys())
     mentee_drop.extend(['Finished', which_key, double_up_key, mentor_name_key])
     mentee_df.drop(columns=mentee_drop, inplace=True)
-    mentee_df = mentee_df[mentee_df[mentee_name_key].notna()].copy()
+    mentee_df = mentee_df[mentee_df[mentee_name_key].notna()].copy().reset_index(drop=True)
+
+    ### Step 4b. Invert names and rankings (names should be columns and entries should be rankings)
+    mentor_list += [name + ' Double' for name in mentor_doubles_names]
+    # Create new columns with mentee names as headers
+    mentee_name_prefs = pd.DataFrame(
+        np.nan * np.ones((mentee_df.shape[0], len(mentor_list))),
+        columns=mentor_list, index=mentee_df.index
+    )
+    for i, row in mentee_df.iterrows():
+        ordered_mentors = row.loc[mentor_columns.values()].copy()
+        # If there are duplicates, keep the first and shift the rest up by 1
+        ordered_mentors.drop_duplicates(keep='first', inplace=True)
+        ordered_mentors.index = np.arange(1, ordered_mentors.shape[0]+1)
+        # Assign rank to mentee name in flipped dataframe
+        for rank, mentor_name in ordered_mentors.items():
+            mentee_name_prefs.loc[i, mentor_name] = rank
+            # Add duplicate rank for doubled mentor
+            if mentor_name in mentor_doubles_names:
+                mentee_name_prefs.loc[i, mentor_name + ' Double'] = rank
+    mentee_df = mentee_df.join(mentee_name_prefs).drop(columns=mentor_columns.values())
     
     ### Step 5. Clear duplicates
     # response with fewest NaNs is accepted, or last response if same num NaN
@@ -137,8 +176,10 @@ def survey_res_parser(survey_file, has_double_up_q=True):
     
     ### Step 8. Fill in missing mentees/mentors
     # columns (prewritten in the survey) have the "complete" mentee/mentor name lists
-    mentor_df = add_missing_persons(mentor_df, mentee_df.columns)
-    mentee_df = add_missing_persons(mentee_df, mentor_df.columns)
+    # mentor_df = add_missing_persons(mentor_df, mentee_df.columns)
+    # mentee_df = add_missing_persons(mentee_df, mentor_df.columns)
+    mentor_df = add_missing_persons(mentor_df, mentor_list)
+    mentee_df = add_missing_persons(mentee_df, mentee_list)
     
     return mentor_df, mentee_df
 
@@ -225,3 +266,12 @@ def intro_survey_parser(survey_file):
     # Maybe do this manually instead? Or have to pass a list of all names (that match with preferred names... :/)
     
     return ret_df
+
+
+def read_name_list(fname):
+    """
+    Read text file with one name per line into a list.
+    """
+    with open(fname, 'r') as f:
+        names = [n.replace('\n', '') for n in f.readlines()]
+    return names
