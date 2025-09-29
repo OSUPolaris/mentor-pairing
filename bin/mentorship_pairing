@@ -107,12 +107,11 @@ mentee_rank_mentor = []
 mentor_rank_mentee = []
 num_mentors = len(mentee_df.columns)
 num_mentees = len(mentee_df.index)
-print(num_mentees, num_mentors)
+print(f'{num_mentees} mentees, {num_mentors} mentors (including doubles).')
 # Re-join mentor doubles
 # mentee_df = mentee_df.join(mentee_doubles)
 # mentor_df = pd.concat([mentor_df, mentor_doubles])
 for mentee, mentor in mentee_series.items():
-    # print(mentee, mentor)
     picked_rank = mentee_df.loc[mentee, mentor]
     mentee_rank_mentor.append(picked_rank)
     pr = mentor_df.loc[mentor, mentee] #mentor_df has inversed index/columns from mentee_df
