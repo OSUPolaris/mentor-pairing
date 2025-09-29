@@ -84,6 +84,10 @@ def survey_res_parser(survey_file, has_double_up_q=True):
     else: # Note index flip between above and below, if not one way it is the other way
         mentor_name_key = name_select_keys[0]
         mentee_name_key = name_select_keys[1]
+    # Check for missing mentors
+    if mentor_df.shape[0] < len(mentor_list):
+        missing_mentors = [m for m in mentor_list if m not in mentor_df[mentor_name_key].to_list()]
+        print('WARNING: Missing preferences for %s mentors: %s' % (len(missing_mentors), missing_mentors))
     # Add duplicate mentor rows for those who are ok with two mentees
     mentor_doubles = mentor_df[mentor_df[double_up_key].str.contains('Yes')].copy()
     mentor_doubles_names = [name.replace('\t', ' ') for name in mentor_doubles[mentor_name_key]]
@@ -105,6 +109,7 @@ def survey_res_parser(survey_file, has_double_up_q=True):
     for i, row in mentor_df.iterrows():
         ordered_mentees = row.loc[mentee_columns.values()].copy()
         # If there are duplicates, keep the first and shift the rest up by 1
+        ordered_mentees.dropna(inplace=True)
         ordered_mentees.drop_duplicates(keep='first', inplace=True)
         ordered_mentees.index = np.arange(1, ordered_mentees.shape[0]+1)
         # Assign rank to mentee name in flipped dataframe
@@ -124,6 +129,9 @@ def survey_res_parser(survey_file, has_double_up_q=True):
     mentee_drop.extend(['Finished', which_key, double_up_key, mentor_name_key])
     mentee_df.drop(columns=mentee_drop, inplace=True)
     mentee_df = mentee_df[mentee_df[mentee_name_key].notna()].copy().reset_index(drop=True)
+    if mentee_df.shape[0] < len(mentee_list):
+        missing_mentees = [m for m in mentee_list if m not in mentee_df[mentee_name_key].to_list()]
+        print('WARNING: Missing preferences for %s mentees: %s' % (len(missing_mentees), missing_mentees))
 
     ### Step 4b. Invert names and rankings (names should be columns and entries should be rankings)
     mentor_list += [name + ' Double' for name in mentor_doubles_names]
@@ -135,6 +143,7 @@ def survey_res_parser(survey_file, has_double_up_q=True):
     for i, row in mentee_df.iterrows():
         ordered_mentors = row.loc[mentor_columns.values()].copy()
         # If there are duplicates, keep the first and shift the rest up by 1
+        ordered_mentors.dropna(inplace=True)
         ordered_mentors.drop_duplicates(keep='first', inplace=True)
         ordered_mentors.index = np.arange(1, ordered_mentors.shape[0]+1)
         # Assign rank to mentee name in flipped dataframe
