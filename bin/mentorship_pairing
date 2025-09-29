@@ -52,8 +52,8 @@ mentor_df.sort_index(axis='columns', inplace=True)
 mentee_df.sort_index(axis='index', inplace=True)
 mentee_df.sort_index(axis='columns', inplace=True)
 if write_parsed_survey:
-    mentor_df.to_csv('mentor_prefs.csv')
-    mentee_df.to_csv('mentee_prefs.csv')
+    mentor_df.to_csv('out/mentor_prefs.csv')
+    mentee_df.to_csv('out/mentee_prefs.csv')
 # split off mentors who are ok with two mentees
 # this ensures that every mentor is paired with at least one mentee
 # mentor_double_list = [c for c in mentor_df.index if 'Double' in c]
@@ -77,8 +77,9 @@ mentee_series1 = sp.matches_as_series(orient='A')
 ### Step 2: look for unpaired mentees, run again with only them
 unpaired = mentee_series1[mentee_series1=='None'].index
 # If everyone is paired, we can just continue
-print(unpaired)
 if len(unpaired) > 0:
+    print('Unpaired first round:')
+    print(unpaired)
     unpaired_mentees = mentee_df.loc[unpaired]
     unpaired_mentors = mentor_df[unpaired].copy()
     # unpaired_mentees = mentee_doubles.loc[unpaired]
@@ -111,20 +112,22 @@ print(num_mentees, num_mentors)
 # mentee_df = mentee_df.join(mentee_doubles)
 # mentor_df = pd.concat([mentor_df, mentor_doubles])
 for mentee, mentor in mentee_series.items():
-    print(mentee, mentor)
+    # print(mentee, mentor)
     picked_rank = mentee_df.loc[mentee, mentor]
     mentee_rank_mentor.append(picked_rank)
     pr = mentor_df.loc[mentor, mentee] #mentor_df has inversed index/columns from mentee_df
     if len(pr.shape) > 0: # deal with doubled mentors
         pr = pr.iloc[0]
     mentor_rank_mentee.append(pr)
-u, c = np.unique(mentee_series.values, return_counts=True)
-u[c>1]
 pairdf = pd.DataFrame(mentee_series)
+pairdf.index.name = 'mentee'
 pairdf.rename(columns={0:'mentor'}, inplace=True)
+# Remove "Double" indicator strings
+pairdf['mentor'] = pairdf['mentor'].str.replace(' Double', '')
 pairdf['mentee_rank'] = mentee_rank_mentor
 pairdf['mentor_rank'] = mentor_rank_mentee
 pairdf['doubled_mentor'] = False
+u, c = np.unique(pairdf['mentor'].values, return_counts=True)
 pairdf.loc[pairdf['mentor'].isin(u[c>1]), 'doubled_mentor'] = True
 
 ### Step 4: Let's do some checks
