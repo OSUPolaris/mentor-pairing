@@ -106,8 +106,9 @@ mentee_series.sort_index()
 mentee_rank_mentor = []
 mentor_rank_mentee = []
 num_mentors = len(mentee_df.columns)
+num_unique_mentors = len(set(mentee_df.columns.str.replace(' Double', '')))
 num_mentees = len(mentee_df.index)
-print(f'{num_mentees} mentees, {num_mentors} mentors (including doubles).')
+print(f'{num_mentees} mentees, {num_unique_mentors} mentors, {num_mentors - num_unique_mentors} doubled mentors.')
 # Re-join mentor doubles
 # mentee_df = mentee_df.join(mentee_doubles)
 # mentor_df = pd.concat([mentor_df, mentor_doubles])
@@ -130,17 +131,17 @@ u, c = np.unique(pairdf['mentor'].values, return_counts=True)
 pairdf.loc[pairdf['mentor'].isin(u[c>1]), 'doubled_mentor'] = True
 
 ### Step 4: Let's do some checks
-mentor_set = set(mentor_df.index)
+mentor_set = set(mentor_df.index.str.replace(' Double', ''))
 mentee_set = set(mentee_df.index)
 if should_assert:
     assert mentee_set == set(pairdf.index), f'Some mentees are missing from the final pairs! {mentee_set - set(pairdf.index)}'
     # Check here, if there are less mentors than mentees I don't care if some mentors are missing
-    if num_mentees >= num_mentors:
-        assert mentor_set == set(pairdf.values), f'Some mentors are missing in the final pairs! {mentor_set - set(pairdf["mentor"])}'
+    if num_mentees >= num_unique_mentors:
+        assert mentor_set == set(pairdf['mentor']), f'Some mentors are missing in the final pairs! {mentor_set - set(pairdf["mentor"])}'
 else:
     if mentee_set != set(pairdf.index):
         print(f'WARNING: Some mentees are missing from the final pairs! Missing: {mentee_set - set(pairdf.index)}')
-    if (mentor_set != set(pairdf.mentor)) and (num_mentees >= num_mentors):
+    if (mentor_set != set(pairdf.mentor)) and (num_mentees >= num_unique_mentors):
         print(f'WARNING: Some mentors are missing in the final pairs! Missing: {mentor_set - set(pairdf["mentor"])}')
 
 ### Step 5: write results
